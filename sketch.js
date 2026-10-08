@@ -1,4 +1,4 @@
-//學習1程式碼所在
+//學習2程式碼所在
 let questions = [];
 let currentQ = 0;
 let score = 0;
@@ -13,9 +13,14 @@ let feedbackTimer = 0;
 let optionButtons = [];
 
 function setup() {
-  createCanvas(600, 450);
+  createCanvas(windowWidth, windowHeight);
   generateQuestions();
-  setupOptionButtons();
+  updateLayout();
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  updateLayout();
 }
 
 // 產生 5 題隨機個位數加法題目
@@ -26,16 +31,14 @@ function generateQuestions() {
     let num2 = floor(random(0, 10));
     let correctAns = num1 + num2;
 
-    // 產生 3 個不重複的錯誤答案
     let optionsSet = new Set();
     optionsSet.add(correctAns);
-    
+
     while (optionsSet.size < 4) {
-      let wrongAns = floor(random(0, 19)); // 加法最大值為 18
+      let wrongAns = floor(random(0, 19));
       optionsSet.add(wrongAns);
     }
 
-    // 將答案洗牌轉成陣列
     let options = Array.from(optionsSet);
     shuffle(options, true);
 
@@ -48,16 +51,28 @@ function generateQuestions() {
   }
 }
 
-// 計算 4 個選項按鈕的位置
-function setupOptionButtons() {
+// 依據目前視窗尺寸動態計算 UI 與 4 個選項按鈕的位置/大小
+function updateLayout() {
   optionButtons = [];
-  let startY = 200;
-  let btnWidth = 220;
-  let btnHeight = 50;
+
+  // 計算響應式卡片區域 (中央最大 600px 寬或視窗 90% 寬)
+  let cardW = min(width * 0.9, 600);
+  let startX = (width - cardW) / 2;
+
+  // 按鈕寬高與間距
+  let gap = min(width * 0.03, 15);
+  let btnWidth = (cardW - gap) / 2;
+  let btnHeight = min(height * 0.08, 60);
+
+  let startY = height * 0.45;
 
   for (let i = 0; i < 4; i++) {
-    let x = (i % 2 === 0) ? 60 : 320;
-    let y = startY + floor(i / 2) * 70;
+    let col = i % 2;
+    let row = floor(i / 2);
+
+    let x = startX + col * (btnWidth + gap);
+    let y = startY + row * (btnHeight + gap);
+
     optionButtons.push({ x: x, y: y, w: btnWidth, h: btnHeight });
   }
 }
@@ -76,37 +91,43 @@ function draw() {
 function drawQuizScreen() {
   let q = questions[currentQ];
 
-  // 1. 頂部資訊欄（進度與得分）
+  // 1. 卡片基準範圍計算
+  let cardW = min(width * 0.9, 600);
+  let centerX = width / 2;
+
+  // 2. 頂部資訊欄（進度與得分）
   textAlign(LEFT, CENTER);
-  textSize(16);
+  textSize(constrain(width * 0.025, 14, 18));
   fill(100);
-  text(`第 ${currentQ + 1} / ${totalQuestions} 題`, 40, 40);
+  text(`第 ${currentQ + 1} / ${totalQuestions} 題`, centerX - cardW / 2, height * 0.08);
 
   textAlign(RIGHT, CENTER);
-  text(`目前答對：${score} 題`, width - 40, 40);
+  text(`目前答對：${score} 題`, centerX + cardW / 2, height * 0.08);
 
-  // 2. 題目框
+  // 3. 題目框
+  let qBoxY = height * 0.14;
+  let qBoxH = min(height * 0.25, 120);
+
   stroke(220);
   fill(255);
-  rect(40, 70, width - 80, 100, 12);
+  rect(centerX - cardW / 2, qBoxY, cardW, qBoxH, 12);
   noStroke();
 
   textAlign(CENTER, CENTER);
-  textSize(32);
+  textSize(constrain(width * 0.06, 24, 38));
   fill(40);
-  text(`${q.num1} + ${q.num2} = ?`, width / 2, 120);
+  text(`${q.num1} + ${q.num2} = ?`, centerX, qBoxY + qBoxH / 2);
 
-  // 3. 繪製 4 個選項
+  // 4. 繪製 4 個選項按鈕
   for (let i = 0; i < 4; i++) {
     let btn = optionButtons[i];
     let isHover = mouseX > btn.x && mouseX < btn.x + btn.w &&
                   mouseY > btn.y && mouseY < btn.y + btn.h;
 
-    // 按鈕背景顏色變換
     if (answered && i === selectedOption) {
-      fill(isCorrect ? "#4CAF50" : "#F44336"); // 對：綠，錯：紅
+      fill(isCorrect ? "#4CAF50" : "#F44336");
     } else if (!answered && isHover) {
-      fill("#E3F2FD"); // 滑鼠懸停
+      fill("#E3F2FD");
     } else {
       fill(255);
     }
@@ -115,30 +136,29 @@ function drawQuizScreen() {
     rect(btn.x, btn.y, btn.w, btn.h, 8);
     noStroke();
 
-    // 文字顏色
     if (answered && i === selectedOption) {
       fill(255);
     } else {
       fill(50);
     }
-    textSize(20);
+    textSize(constrain(btn.h * 0.45, 16, 24));
     text(q.options[i], btn.x + btn.w / 2, btn.y + btn.h / 2);
   }
 
-  // 4. 答題後的暫停與跳頁邏輯
+  // 5. 反饋提示與跳頁邏輯
   if (answered) {
-    // 顯示即時對錯提示
     textAlign(CENTER, CENTER);
-    textSize(22);
+    textSize(constrain(width * 0.035, 18, 24));
+    let feedbackY = height * 0.82;
+
     if (isCorrect) {
       fill("#2E7D32");
-      text("答對了！🎉", width / 2, 360);
+      text("答對了！🎉", centerX, feedbackY);
     } else {
       fill("#C62828");
-      text(`答錯了！正確答案是：${q.correctAns}`, width / 2, 360);
+      text(`答錯了！正確答案是：${q.correctAns}`, centerX, feedbackY);
     }
 
-    // 延遲 1 秒（60 幀）後進入下一題
     if (frameCount - feedbackTimer > 60) {
       nextQuestion();
     }
@@ -147,27 +167,31 @@ function drawQuizScreen() {
 
 // 繪製結算畫面
 function drawEndScreen() {
-  // 結算卡片
+  let cardW = min(width * 0.85, 450);
+  let cardH = min(height * 0.6, 320);
+  let centerX = width / 2;
+  let centerY = height / 2;
+
   stroke(220);
   fill(255);
-  rect(80, 60, width - 160, 330, 16);
+  rect(centerX - cardW / 2, centerY - cardH / 2, cardW, cardH, 16);
   noStroke();
 
   textAlign(CENTER, CENTER);
-  
-  textSize(28);
-  fill(40);
-  text("測驗結束！", width / 2, 120);
 
-  textSize(22);
+  textSize(constrain(cardW * 0.08, 22, 32));
+  fill(40);
+  text("測驗結束！", centerX, centerY - cardH * 0.25);
+
+  textSize(constrain(cardW * 0.06, 16, 22));
   fill(80);
-  text(`您的總得分： ${score} / ${totalQuestions} 題`, width / 2, 190);
+  text(`您的總得分： ${score} / ${totalQuestions} 題`, centerX, centerY - cardH * 0.02);
 
   // 重新開始按鈕
-  let btnX = width / 2 - 80;
-  let btnY = 270;
-  let btnW = 160;
-  let btnH = 45;
+  let btnW = cardW * 0.5;
+  let btnH = min(cardH * 0.18, 50);
+  let btnX = centerX - btnW / 2;
+  let btnY = centerY + cardH * 0.2;
 
   let isHover = mouseX > btnX && mouseX < btnX + btnW &&
                 mouseY > btnY && mouseY < btnY + btnH;
@@ -176,18 +200,17 @@ function drawEndScreen() {
   rect(btnX, btnY, btnW, btnH, 8);
 
   fill(255);
-  textSize(18);
-  text("再試一次", width / 2, btnY + btnH / 2);
+  textSize(constrain(btnH * 0.4, 14, 20));
+  text("再試一次", centerX, btnY + btnH / 2);
 }
 
 function mousePressed() {
   if (gameState === "QUIZ" && !answered) {
-    // 檢查點擊區域
     for (let i = 0; i < 4; i++) {
       let btn = optionButtons[i];
       if (mouseX > btn.x && mouseX < btn.x + btn.w &&
           mouseY > btn.y && mouseY < btn.y + btn.h) {
-        
+
         selectedOption = i;
         answered = true;
         feedbackTimer = frameCount;
@@ -203,11 +226,15 @@ function mousePressed() {
       }
     }
   } else if (gameState === "FINISHED") {
-    // 檢查點擊「再試一次」按鈕
-    let btnX = width / 2 - 80;
-    let btnY = 270;
-    let btnW = 160;
-    let btnH = 45;
+    let cardW = min(width * 0.85, 450);
+    let cardH = min(height * 0.6, 320);
+    let centerX = width / 2;
+    let centerY = height / 2;
+
+    let btnW = cardW * 0.5;
+    let btnH = min(cardH * 0.18, 50);
+    let btnX = centerX - btnW / 2;
+    let btnY = centerY + cardH * 0.2;
 
     if (mouseX > btnX && mouseX < btnX + btnW &&
         mouseY > btnY && mouseY < btnY + btnH) {
@@ -233,4 +260,5 @@ function restartQuiz() {
   selectedOption = -1;
   gameState = "QUIZ";
   generateQuestions();
+  updateLayout();
 }
